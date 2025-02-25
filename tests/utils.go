@@ -304,14 +304,7 @@ func createAndVerifyPVC(expect_bound bool) {
 		pvcName,
 		OpenEBSNamespace,
 	)
-	ok := false
-	if !expect_bound {
-		ok = IsPVCPendingConsistently(pvcName)
-	} else {
-		ok = IsPVCBoundEventually(pvcName)
-	}
-	gomega.Expect(ok).To(gomega.Equal(true),
-		"while checking the pvc status")
+	verifyPVCStatus(pvcName, expect_bound)
 
 	pvcObj, err = PVCClient.WithNamespace(OpenEBSNamespace).Get(pvcObj.Name, metav1.GetOptions{})
 	gomega.Expect(err).To(
@@ -323,7 +316,7 @@ func createAndVerifyPVC(expect_bound bool) {
 }
 
 // Verifies state of already created pvc based on expect_bound.
-func verifyPVC(pvc_name string, expect_bound bool) {
+func verifyPVCStatus(pvc_name string, expect_bound bool) {
 	ok := false
 	if !expect_bound {
 		ok = IsPVCPendingConsistently(pvc_name)
@@ -872,7 +865,6 @@ func cordonk8sNode() {
 				"Could not cordon node",
 			)
 		}
-
 	}
 }
 

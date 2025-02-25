@@ -158,7 +158,7 @@ func scheduleOnCordonedNodeTest() {
 	createAndVerifyPVC(false)
 	By("Uncordon the node", uncordonk8sNode)
 	By("Verify the PVC gets Bound")
-	verifyPVC(pvcName, true)
+	verifyPVCStatus(pvcName, true)
 	deleteAndVerifyPVC(pvcName)
 	By("Verifying that PV doesnt exists after PVC deletion")
 	verifyPVForPVC(false, pvcName)
