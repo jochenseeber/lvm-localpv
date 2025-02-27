@@ -149,6 +149,22 @@ func vgPatternMatchPresentTest() {
 	By("Deleting storage class", deleteStorageClass)
 }
 
+func scheduleOnCordonedNodeTest() {
+	device := setupVg(20, "lvmvg")
+	defer cleanupVg(device, "lvmvg")
+	By("Creating storage class", createStorageClass)
+	By("Cordoning the node", cordonk8sNode)
+	By("Creating and verifying PVC Bound status. It should not be Bound")
+	createAndVerifyPVC(false)
+	By("Uncordon the node", uncordonk8sNode)
+	By("Verify the PVC gets Bound")
+	verifyPVCStatus(pvcName, true)
+	deleteAndVerifyPVC(pvcName)
+	By("Verifying that PV doesnt exists after PVC deletion")
+	verifyPVForPVC(false, pvcName)
+	By("Deleting storage class", deleteStorageClass)
+}
+
 func vgPatternNoMatchPresentTest() {
 	device := setupVg(20, "lvmvg212")
 	device_1 := setupVg(20, "lvmvg")
@@ -316,6 +332,7 @@ func schedulingTest() {
 	By("###Running vg specified in sc not present test###", vgSpecifiedNotPresentTest)
 	By("###Running lvmnode has vg matching vgpattern test###", vgPatternMatchPresentTest)
 	By("###Running lvmnode doesnt have vg matching vgpattern test###", vgPatternNoMatchPresentTest)
+	By("###Running volume schedule on Cordoned node test###", scheduleOnCordonedNodeTest)
 }
 
 func capacityTest() {

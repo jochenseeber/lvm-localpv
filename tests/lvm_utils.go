@@ -79,7 +79,6 @@ func vgEmpty(name string) bool {
 	lvs, _, _ := execAtLocal("sudo", nil, args_lvs...)
 	lvs_str := strings.TrimSpace(string(lvs))
 	lv_cnt, _ := strconv.Atoi(lvs_str)
-	fmt.Printf("lvs cnt is %d\n", lv_cnt)
 	if lv_cnt != 0 {
 		return false
 	} else {
@@ -160,7 +159,6 @@ func removeVg(name string) {
 		if current_retry < retries {
 			vg_empty := vgEmpty(name)
 			if vg_empty {
-				fmt.Printf("No lv in vg before vg remove\n")
 				break
 			} else {
 				fmt.Printf("lv in vg during retry %d\n", current_retry)
