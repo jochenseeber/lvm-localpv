@@ -278,6 +278,8 @@ func CreateLVMVolume(ctx context.Context, req *csi.CreateVolumeRequest,
 		}
 	}
 
+	fmt.Printf("vol param is %v\n", params)
+
 	nmap, err := getNodeMap(params.Scheduler, params.VgPattern)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get node map failed : %s", err.Error())
@@ -289,7 +291,7 @@ func CreateLVMVolume(ctx context.Context, req *csi.CreateVolumeRequest,
 	if len(selected) == 0 {
 		return nil, status.Error(codes.Internal, "scheduler failed, not able to select a node to create the PV")
 	}
-
+	fmt.Printf("selected is %v\n", selected)
 	owner := selected[0]
 	klog.Infof("scheduling the volume %s/%s on node %s",
 		params.VgPattern.String(), volName, owner)

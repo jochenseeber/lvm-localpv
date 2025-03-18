@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -102,6 +103,7 @@ func getCapacityWeightedMap(re *regexp.Regexp) (map[string]int64, error) {
 // can accumulate more volumes.
 func getSpaceWeightedMap(re *regexp.Regexp) (map[string]int64, error) {
 	nmap := map[string]int64{}
+	dummy_nmap := map[string]int64{}
 
 	nodeList, err := nodebuilder.NewKubeclient().
 		WithNamespace(lvm.LvmNamespace).
@@ -124,7 +126,10 @@ func getSpaceWeightedMap(re *regexp.Regexp) (map[string]int64, error) {
 		if maxFree > 0 {
 			// converting to SpaceWeighted by subtracting it with MaxInt64
 			// as the node which has max free space available is less loaded.
+			dummy_nmap[node.Name] = maxFree
 			nmap[node.Name] = math.MaxInt64 - maxFree
+			fmt.Printf("nmap is %v\n", nmap)
+			fmt.Printf("dummy nmap is %v\n", dummy_nmap)
 		}
 	}
 
