@@ -35,7 +35,7 @@ LocalPV refers to storage that is directly attached to a specific node in the Ku
 - <b>No replication</b>: Data is not replicated across nodes, so if the node fails, the data may become inaccessible.
 - <b>High performance</b>: Since the storage is local, it typically offers lower latency compared to network-attached storage.
 
-The diagram below depicts the mapping to the host disks, the LVM stack on top of the disks and the kubernetes persistent volumes to be consumed by the workload. Local PV LVM CSI Controller upon creation of the Persistent Volume Claim, creates a LVMVolume CR, which emits an event for Local PV LVM CSI Node Plugin to create the LV(logical volume). When workloads are scheduled the Local PV LVM CSI Node Plugin makes this zvol/dataset available via a mount point on the host.
+The diagram below depicts the mapping to the host disks, the LVM stack on top of the disks and the kubernetes persistent volumes to be consumed by the workload. Local PV LVM CSI Controller upon creation of the Persistent Volume Claim, creates a LVMVolume CR, which emits an event for Local PV LVM CSI Node Plugin to create the LV(logical volume). When workloads are scheduled the Local PV LVM CSI Node Plugin makes this lv/logical volume available via a mount point on the host.
 
 ```mermaid
 graph TD;
