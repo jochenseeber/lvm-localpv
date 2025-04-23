@@ -89,7 +89,7 @@ func New(config *config.Config) *CSIDriver {
 func (d *CSIDriver) Run() error {
 	// Initialize and start listening on grpc server
 	s := NewNonBlockingGRPCServer(d.config.Endpoint, d.ids, d.cs, d.ns)
-
+	klog.Info("TESTCI: testing ci runs")
 	s.Start()
 	s.Wait()
 
