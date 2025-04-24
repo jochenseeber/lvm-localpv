@@ -234,7 +234,7 @@ func (c *VolController) getVgPriorityList(vol *apis.LVMVolume) ([]apis.VolumeGro
 		return nil, fmt.Errorf("invalid regular expression %v for lvm volume %s: %v",
 			vol.Spec.VgPattern, vol.Name, err)
 	}
-	capacity, err := strconv.Atoi(vol.Spec.Capacity)
+	capacity, err := strconv.ParseInt(vol.Spec.Capacity, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("invalid requested capacity %v for lvm volume %s: %v",
 			vol.Spec.Capacity, vol.Name, err)
