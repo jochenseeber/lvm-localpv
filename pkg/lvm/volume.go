@@ -58,6 +58,8 @@ const (
 	OpenEBSCasTypeKey string = "openebs.io/cas-type"
 	// LVMCasTypeName for the name of the cas-type
 	LVMCasTypeName string = "localpv-lvm"
+	// FormatOptionsKey for Extra Format Options in storage class
+	FormatOptionsKey string = "openebs.io/format-options"
 )
 
 var (

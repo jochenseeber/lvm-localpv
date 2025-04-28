@@ -86,6 +86,22 @@ func fsVolCreationTest() {
 	}
 }
 
+func formatOptionsTest() {
+	formatOptions := "-b 4096 -N 5000000"
+	By("####### Creating the storage class with formatOptions : " + formatOptions + " #######")
+	createFormatOptionsStorageClass(formatOptions)
+	By("Creating and verifying PVC bound status")
+	createAndVerifyPVC(true)
+	By("Creating and deploying app pod", createDeployVerifyFormatOptions)
+	By("Verifying LVMVolume object to be Ready")
+	VerifyLVMVolume(true, "")
+	By("Deleting verifier pvc/pod")
+	deleteAppAndPvc([]string{"format-options-verifier"}, pvcName)
+	By("Verifying that PV is deleted after deletion")
+	verifyPVForPVC(false, pvcName)
+	By("Deleting storage class", deleteStorageClass)
+}
+
 func blockVolCreationTest() {
 	By("Creating default storage class", createStorageClass)
 	By("Creating and verifying PVC bound status")
@@ -321,6 +337,7 @@ func volumeCreationTest() {
 	device := setupVg(40, "lvmvg")
 	defer cleanupVg(device, "lvmvg")
 	By("###Running filesystem volume creation test###", fsVolCreationTest)
+	By("###Running filesystem with formatOptions creation test###", formatOptionsTest)
 	By("###Running block volume creation test###", blockVolCreationTest)
 	By("###Running thin volume creation test###", thinVolCreationTest)
 	By("###Running leak protection test###", leakProtectionTest)
