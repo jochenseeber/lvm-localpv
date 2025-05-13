@@ -64,6 +64,7 @@ type controller struct {
 	lvmNodeInformer cache.SharedIndexInformer
 
 	leakProtection *csipv.LeakProtectionController
+	csi.UnimplementedControllerServer
 }
 
 // NewController returns a new instance
@@ -1025,6 +1026,20 @@ func (cs *controller) validateVolumeCreateReq(req *csi.CreateVolumeRequest) erro
 	}
 
 	return nil
+}
+
+func (cs *controller) ControllerGetVolume(
+	ctx context.Context,
+	req *csi.ControllerGetVolumeRequest,
+) (*csi.ControllerGetVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "ControllerGetVolume is not implemented")
+}
+
+func (cs *controller) ControllerModifyVolume(
+	ctx context.Context,
+	req *csi.ControllerModifyVolumeRequest,
+) (*csi.ControllerModifyVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "ControllerModifyVolume is not implemented")
 }
 
 func validateSnapshotRequest(req *csi.CreateSnapshotRequest) error {
