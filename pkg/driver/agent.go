@@ -215,6 +215,11 @@ func GetVolAndMountInfo(
 	if err != nil {
 		return nil, nil, err
 	}
+	mountinfo.FormatOptions = nil
+	formatOptions := strings.TrimSpace(req.VolumeContext[lvm.FormatOptionsKey])
+	if len(formatOptions) > 0 {
+		mountinfo.FormatOptions = strings.Split(formatOptions, " ")
+	}
 
 	return vol, &mountinfo, nil
 }

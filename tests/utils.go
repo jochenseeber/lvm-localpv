@@ -233,6 +233,29 @@ func createThinStorageClass() {
 	gomega.Expect(err).To(gomega.BeNil(), "while creating a thinProvision storageclass {%s}", scName)
 }
 
+func createFormatOptionsStorageClass(formatOptions string) {
+	var (
+		err error
+	)
+
+	parameters := map[string]string{
+		"volgroup":      VOLGROUP,
+		"formatOptions": formatOptions,
+	}
+
+	ginkgo.By("building a default storage class")
+	scObj, err = sc.NewBuilder().
+		WithGenerateName(scName).
+		WithVolumeExpansion(true).
+		WithParametersNew(parameters).
+		WithProvisioner(LocalProvisioner).Build()
+	gomega.Expect(err).ShouldNot(gomega.HaveOccurred(),
+		"while building formatOptions storageclass obj with prefix {%s}", scName)
+
+	scObj, err = SCClient.Create(scObj)
+	gomega.Expect(err).To(gomega.BeNil(), "while creating a storageclass with formatOptions {%s}", scName)
+}
+
 // VerifyLVMVolume verify the properties of a lvm-volume
 // expected_vg is supposed to be passed only when vgpatten was used for scheduling.
 // If its volgroup in sc then we can just match volgroup with lvmvolume's vg field.
@@ -558,6 +581,109 @@ func createAndDeployBlockAppPod() {
 			OpenEBSNamespace,
 		)
 	}
+}
+
+func createDeployVerifyFormatOptions() {
+	ginkgo.By("creating and deploying verifier pod")
+	createAndDeployVerifyFormatOptions()
+	ginkgo.By("verifying verifier pod is running", verifyFormatOptionsVerifierPodRunning)
+}
+
+func createAndDeployVerifyFormatOptions() {
+	var err error
+	appname := "format-options-verifier"
+	labels := map[string]string{
+		"role": "test",
+		"app":  appname,
+	}
+	ginkgo.By("building app " + appname + " using above lvm volume")
+	deployObj, err = deploy.NewBuilder().
+		WithName(appname).
+		WithNamespace(OpenEBSNamespace).
+		WithLabelsNew(labels).
+		WithSelectorMatchLabelsNew(labels).
+		WithPodTemplateSpecBuilder(
+			pts.NewBuilder().
+				WithLabelsNew(labels).
+				WithContainerBuilders(
+					container.NewBuilder().
+						WithImage("debian:stable-slim").
+						WithName("verifier").
+						WithImagePullPolicy(corev1.PullIfNotPresent).
+						WithEnvsNew(
+							[]corev1.EnvVar{
+								{
+									Name:  "MIN_INODES",
+									Value: "5000000",
+								},
+							},
+						).
+						WithCommandNew(
+							[]string{
+								"bash",
+								"-c",
+								`test "$(df -i '/mnt/datadir' | tail -n 1 | awk '{print $2}')" -ge "$MIN_INODES" && tail -f /dev/null`,
+							},
+						).
+						WithLifeCycle(
+							&corev1.Lifecycle{
+								PreStop: &corev1.LifecycleHandler{
+									Exec: &corev1.ExecAction{
+										Command: []string{
+											"bash",
+											"-c",
+											"kill -9 $(pidof tail)",
+										},
+									},
+								},
+							},
+						).
+						WithVolumeMountsNew(
+							[]corev1.VolumeMount{
+								{
+									Name: "datavol1",
+									// If this path changes, modify the above command line accordingly (df command).
+									MountPath: "/mnt/datadir",
+								},
+							},
+						),
+				).
+				WithVolumeBuilders(
+					k8svolume.NewBuilder().
+						WithName("datavol1").
+						WithPVCSource(pvcObj.Name),
+				),
+		).
+		Build()
+
+	gomega.Expect(err).ShouldNot(gomega.HaveOccurred(), "while building app deployement {%s}", appname)
+
+	deployObj, err = DeployClient.WithNamespace(OpenEBSNamespace).Create(deployObj)
+	gomega.Expect(err).ShouldNot(
+		gomega.HaveOccurred(),
+		"while creating pod {%s} in namespace {%s}",
+		appname,
+		OpenEBSNamespace,
+	)
+}
+
+func verifyFormatOptionsVerifierPodRunning() {
+	var err error
+	appName := "format-options-verifier"
+	labelValue := fmt.Sprintf("role=test,app=%s", appName)
+	gomega.Eventually(func() bool {
+		appPod, err = PodClient.WithNamespace(OpenEBSNamespace).
+			List(metav1.ListOptions{
+				LabelSelector: labelValue,
+			})
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred(), "while verifying application pod")
+		return len(appPod.Items) == 1
+	},
+		60, 5).
+		Should(gomega.BeTrue())
+
+	status := IsPodRunningEventually(OpenEBSNamespace, appPod.Items[0].Name)
+	gomega.Expect(status).To(gomega.Equal(true), "while checking status of pod {%s}", appPod.Items[0].Name)
 }
 
 func createDeployVerifyBlockApp() {
