@@ -125,6 +125,13 @@ Following matrix shows standard storageclass parameters for lvm-localpv
     <td> Pending </td>
   </tr>
 
+  <tr>
+    <td> <a href="#formatoptions-optional"> formatOptions </td>
+    <td> yes </td>
+    <td> Supported </td>
+    <td> Yes (Only `ext4`) </td>
+  </tr>
+
 </table>
 
 
@@ -261,6 +268,24 @@ LocalPV-LVM storageclass supports various parameters for different use cases. Fo
   ```sh
   $ modprobe dm_thin_pool
   ```
+
+- #### formatOptions (Optional)
+
+  To add extra format options for filesystem volumes, use formatOptions parameter in storage class. It will use the options while formatting the volume with the your chosen filesystem.
+
+  ```yaml
+  apiVersion: storage.k8s.io/v1
+  kind: StorageClass
+  metadata:
+    name: openebs-lvm
+  provisioner: local.csi.openebs.io
+  parameters:
+    storage: "lvm"
+    volgroup: "lvmvg"
+    formatOptions: "-b 4096 -N 5000000"      ## Parameter that adds extra format options for filesystem volumes
+  ```
+
+  Refer to the documentation of the filesystem you are using to know more about the format options.
 
 ### VolumeBindingMode (Optional)
 
