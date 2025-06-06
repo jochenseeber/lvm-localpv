@@ -1,3 +1,23 @@
+v1.7.0 / 2025-06-03
+========================
+test(bdd): adding scheduler logic bdd by @abhilashshetty04 in #323
+chore(deps): update analytics dependency by @niladrih in #325
+feat(charts): add analytics ID and KEY envs to csi controller by @niladrih in #326
+small typo by @chandanpasunoori in #327
+fix readme typo by @runzhliu in #329
+feat(chores): Add missing tools to nix-shell by @mhkarimi1383 in #352
+build: a number of fixes on Makefile and nix-shell by @tiagolobocastro in #360
+docs(security): cross-reference security docs by @tiagolobocastro in #362
+docs: improve contribution guides by @tiagolobocastro in #361
+build: various makefile fixes by @tiagolobocastro in #363
+[fix] Fix invalid YAMLs in crds by @nilroy in #364
+test: add volume provisioning test on cordoned node by @abhilashshetty04 in #375
+docs: update microk8s instructions by @dsharma-dc in #378
+correctly indent podLabels on node service by @ecniiv in #380
+use parseint for capacity parsing to avoid range overflow by @abhilashshetty04 in #387
+update csi spec version to v1.9.0 by @abhilashshetty04 in #391
+feat(provisioning): extra format options (mkfs) added by @mhkarimi1383 in #335
+
 lvm-localpv-1.6.2 / 2024-09-19
 ========================
 <b>NOTE</b>: This was only a chart release that addressed a bug on prior chart. 
