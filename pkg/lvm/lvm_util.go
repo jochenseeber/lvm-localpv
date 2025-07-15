@@ -375,6 +375,55 @@ func GetVolumeDevPath(vol *apis.LVMVolume) (string, error) {
 	return dev, nil
 }
 
+// Validate the size volume based on extents. If the number of extents are already
+// greater than or equal to required, then make a no-op.
+func needsLvResize(vol *apis.LVMVolume, desiredSizeBytes uint64) bool {
+	lvPath := DevPath + vol.Spec.VolGroup + "/" + vol.Name
+	vgName := vol.Spec.VolGroup
+
+	// 1. Get LV Size in bytes, without the unit suffix.
+	lvSizeBytes, _, err := RunCommandSplit(LVList, "-o", "lv_size", "--noheadings", "--nosuffix", "--units", "b", lvPath)
+	if err != nil {
+		klog.Warningf("failed to get LV size for %s: %w", lvPath, err)
+		return true
+	}
+
+	lvSizeBytesStr := strings.TrimSpace(string(lvSizeBytes))
+	lvSize, err := strconv.ParseUint(lvSizeBytesStr, 10, 64) // Parse as int64
+	if err != nil {
+		klog.Warningf("failed to parse LV size %v for %s: %w", lvSizeBytesStr, lvPath, err)
+		return true
+	}
+
+	// 2. Get VG Extent Size in bytes
+	// Similar to LV size, get VG extent size in bytes without suffix.
+	vgExtentSizeBytes, _, err := RunCommandSplit(VGList, "-o", "vg_extent_size", "--noheadings", "--nosuffix", "--units", "b", vgName)
+	if err != nil {
+		klog.Warningf("failed to get VG extent size for %s: %w", vgName, err)
+		return true
+	}
+
+	vgExtentSizeStr := strings.TrimSpace(string(vgExtentSizeBytes))
+	vgExtentSize, err := strconv.ParseUint(vgExtentSizeStr, 10, 64) // Parse as int64
+	if err != nil {
+		klog.Warningf("failed to parse VG extent size '%s' to integer: %w", vgExtentSizeStr, err)
+		return true
+	}
+
+	// 3. Calculate current Logical Extents
+	// Ensure VG extent size is not zero to prevent division by zero.
+	if vgExtentSize == 0 {
+		klog.Warningf("VG extent size is zero, cannot calculate logical extents")
+		return true
+	}
+
+	currNumLEs := uint64(lvSize / vgExtentSize)
+	requiredNumLEs := uint64(desiredSizeBytes / vgExtentSize)
+	klog.Infof("num logical extents - current: %v, required:  %v", currNumLEs, requiredNumLEs)
+
+	return currNumLEs < requiredNumLEs
+}
+
 // builldVolumeResizeArgs returns resize command for the lvm volume
 func buildVolumeResizeArgs(vol *apis.LVMVolume, resizefs bool) []string {
 	var LVMVolArg []string
@@ -404,8 +453,8 @@ func ResizeLVMVolume(vol *apis.LVMVolume, resizefs bool) error {
 	// before exapnding LVM volume(If volume is already expanded then
 	// it might be error prone). This also makes ResizeLVMVolume func
 	// idempotent
+	desiredVolSize, err := strconv.ParseUint(vol.Spec.Capacity, 10, 64)
 	if !resizefs {
-		desiredVolSize, err := strconv.ParseUint(vol.Spec.Capacity, 10, 64)
 		if err != nil {
 			return err
 		}
@@ -423,6 +472,11 @@ func ResizeLVMVolume(vol *apis.LVMVolume, resizefs bool) error {
 	}
 
 	volume := vol.Spec.VolGroup + "/" + vol.Name
+
+	resize_needed := needsLvResize(vol, desiredVolSize)
+	if !resize_needed {
+		return nil
+	}
 
 	args := buildVolumeResizeArgs(vol, resizefs)
 	out, _, err := RunCommandSplit(LVExtend, args...)
