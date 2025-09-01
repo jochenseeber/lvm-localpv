@@ -17,15 +17,19 @@ limitations under the License.
 package lvm
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/creack/pty"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
@@ -312,11 +316,14 @@ func CreateVolume(vol *apis.LVMVolume) error {
 
 // DestroyVolume deletes the lvm volume
 func DestroyVolume(vol *apis.LVMVolume) error {
+	is_thin := strings.TrimSpace(vol.Spec.ThinProvision) == YES
+
 	if vol.Spec.VolGroup == "" {
 		klog.Infof("volGroup not set for lvm volume %v, skipping its deletion", vol.Name)
 		return nil
 	}
 
+	vgname := vol.Spec.VolGroup
 	volume := vol.Spec.VolGroup + "/" + vol.Name
 
 	volExists, err := CheckVolumeExists(vol)
@@ -345,7 +352,205 @@ func DestroyVolume(vol *apis.LVMVolume) error {
 
 	klog.Infof("lvm: destroyed volume %s", volume)
 
+	// If the destroyed volume was a thinvol, then check if it was the
+	// last one on the corresponding thinpool. If yes, then destroy the
+	// thinpool too.
+	if is_thin {
+		thinpool_lv := vgname + "_thinpool"
+		can_destroy := checkThinPoolEmpty(thinpool_lv)
+		name := vgname + "/" + thinpool_lv
+		klog.Infof("Destroy: %v. thinpool: %s", can_destroy, name)
+		// Addressing TOCTOU vulnerability. A new thin lv might get created after we checked above,
+		// and before we issue remove. The new lv will get destroyed in such case. Hence,
+		// parsing prompts to decide and act accordingly. Don't return an error though, if we fail
+		// to remove thinpool for any reason.
+		if can_destroy {
+			cmd := exec.Command(LVRemove, name)
+			// Start the command with a PTY
+			ptmx, err := pty.Start(cmd)
+			if err != nil {
+				klog.Infof("failed to start lvremove in PTY: %v", err)
+				return nil
+			}
+			defer func() {
+				ptmx.Close()
+				klog.Infof("PTY closed for thinpool removal of %s", name)
+			}()
+
+			// Create a channel to signal when the command is done
+			done := make(chan error, 1)
+			go func() {
+				done <- cmd.Wait()
+				close(done)
+			}()
+
+			// Create a reader with a buffer
+			reader := bufio.NewReader(ptmx)
+
+			// Set up a timeout for the entire operation
+			timeout := time.After(30 * time.Second)
+
+			// Buffer to store partial lines
+			var partialLine strings.Builder
+
+			// Read buffer
+			buf := make([]byte, 1024)
+
+			// Read and respond to prompts until the command completes
+			for {
+				select {
+				case err, ok := <-done:
+					// Command completed or channel closed
+					if !ok || err == nil {
+						klog.Infof("Successfully removed thinpool %s", name)
+					} else {
+						klog.Errorf("lvremove failed for thinpool %s: %v", name, err)
+					}
+					return nil
+
+				case <-timeout:
+					klog.Warningf("Thinpool removal timed out after 30 seconds for %s", name)
+					if cmd.Process != nil {
+						if err := cmd.Process.Kill(); err != nil {
+							klog.Errorf("Failed to kill process: %v", err)
+						}
+					}
+					klog.Errorf("thinpool removal timed out")
+					return nil
+
+				default:
+					// Set a read deadline to avoid blocking forever
+					err := ptmx.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+					if err != nil {
+						klog.Warningf("Failed to set read deadline: %v", err)
+					}
+
+					// Try to read from the PTY
+					n, err := reader.Read(buf)
+
+					if err != nil {
+						// Store original error for later use
+						origErr := err
+
+						// Check if it's a timeout error
+						if timeoutErr, ok := err.(interface{ Timeout() bool }); ok && timeoutErr.Timeout() {
+							// This is just a timeout, continue waiting
+							continue
+						} else if origErr == io.EOF {
+							// End of output, check if command is done
+							select {
+							case err, ok := <-done:
+								if !ok || err == nil {
+									klog.Infof("Successfully removed thinpool %s after EOF", name)
+									return nil
+								}
+								return fmt.Errorf("lvremove failed after EOF: %v", err)
+							default:
+								// Command still running, continue
+								continue
+							}
+						} else {
+							klog.Warningf("Error reading from PTY: %v", err)
+							// Check if command is done despite read error
+							select {
+							case err, ok := <-done:
+								if !ok || err == nil {
+									return nil
+								}
+								return fmt.Errorf("lvremove failed: %v", err)
+							default:
+								// Command still running, continue
+								continue
+							}
+						}
+					}
+
+					if n > 0 {
+						output := string(buf[:n])
+						partialLine.WriteString(output)
+						klog.Infof("lvremove raw output: %s", output)
+
+						// Keep buffer to a reasonable size (avoid unbounded growth)
+						if partialLine.Len() > 4096 {
+							partialLine.Reset()
+							partialLine.WriteString(output)
+						}
+
+						content := partialLine.String()
+
+						// Check for prompts directly in the raw output
+						if strings.Contains(content, "Do you really want to remove") {
+							klog.Info("Empty thinpool prompt detected in raw output, responding with 'y'")
+
+							n, err := ptmx.Write([]byte("y\n"))
+							if err != nil {
+								klog.Errorf("Failed to write 'y': %v", err)
+							} else {
+								klog.Infof("Successfully wrote %d bytes ('y\\n') to the command", n)
+							}
+							continue
+						} else if strings.Contains(content, "will remove") && strings.Contains(content, "dependent volume") {
+							klog.Info("Non-empty thinpool prompt detected in raw output, responding with 'n'")
+
+							n, err := ptmx.Write([]byte("n\n"))
+							if err != nil {
+								klog.Errorf("Failed to write 'n': %v", err)
+							} else {
+								klog.Infof("Successfully wrote %d bytes ('n\\n') to the command", n)
+							}
+
+							// Since we're not removing a non-empty thinpool, we can exit
+							return nil
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return nil
+}
+
+// If there is no thin LV on the thinpool, return true.
+func checkThinPoolEmpty(poolname string) bool {
+	data := &struct {
+		Report []struct {
+			LV []struct {
+				LVName string `json:"lv_name"`
+				PoolLV string `json:"pool_lv"`
+			} `json:"lv"`
+		} `json:"report"`
+	}{}
+
+	args := []string{
+		"--reportformat", "json",
+		"-o", "lv_name,pool_lv",
+	}
+
+	out, err_out, err := RunCommandSplit(LVList, args...)
+
+	if err != nil {
+		klog.Errorf("failed to run lvs list: %v, output: %s", err, string(err_out))
+		return false
+	}
+
+	if err := json.Unmarshal(out, &data); err != nil {
+		klog.Errorf("failed to parse JSON: %v", err)
+		return false
+	}
+
+	for _, report := range data.Report {
+		for _, lv := range report.LV {
+			if lv.PoolLV == poolname {
+				klog.Warningf("found at least one thin LV on thinpool %v", lv.PoolLV)
+				// Found at least one thin LV
+				return false
+			}
+		}
+	}
+
+	// No thin LV found on the pool
+	return true
 }
 
 // CheckVolumeExists validates if lvm volume exists
