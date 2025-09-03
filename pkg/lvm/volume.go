@@ -103,7 +103,7 @@ func ProvisionVolume(vol *apis.LVMVolume) (*apis.LVMVolume, error) {
 func DeleteVolume(volumeID string) (err error) {
 	err = volbuilder.NewKubeclient().WithNamespace(LvmNamespace).Delete(volumeID)
 	if err == nil {
-		klog.Infof("deprovisioned volume %s", volumeID)
+		klog.Infof("deprovisioning volume %s, marking deletion timestamp", volumeID)
 	}
 
 	return
@@ -218,6 +218,9 @@ func RemoveVolFinalizer(vol *apis.LVMVolume) error {
 	vol.Finalizers = nil
 
 	_, err := volbuilder.NewKubeclient().WithNamespace(LvmNamespace).Update(vol)
+	if err != nil {
+		klog.Infof("Finalizer removed successfully for %s", vol.Name)
+	}
 	return err
 }
 
