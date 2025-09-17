@@ -350,12 +350,42 @@ func verifyPVCStatus(pvc_name string, expect_bound bool) {
 		"while checking the pvc status")
 }
 
-func createAndVerifyBlockPVC(expect_bound bool) {
-	var (
-		err     error
-		pvcName = "lvmpv-pvc"
-	)
+func createAndVerifyBlockPVCId(expect_bound bool, id_suffix string) {
+	var pvcName = "lvmpv-pvc" + "-" + id_suffix
 
+	createBlockPVC(pvcName)
+	verifyBlockPVCName(expect_bound, pvcName)
+}
+func createAndVerifyBlockPVC(expect_bound bool) {
+	var pvcName = "lvmpv-pvc"
+
+	createBlockPVC(pvcName)
+	verifyBlockPVCName(expect_bound, pvcName)
+}
+
+func verifyBlockPVCName(expect_bound bool, pvcName string) {
+	var err error
+	ginkgo.By("verifying pvc status as bound\n")
+
+	ok := false
+	if !expect_bound {
+		ok = IsPVCPendingConsistently(pvcName)
+	} else {
+		ok = IsPVCBoundEventually(pvcName)
+	}
+	gomega.Expect(ok).To(gomega.Equal(true),
+		"while checking the pvc status")
+
+	pvcObj, err = PVCClient.WithNamespace(OpenEBSNamespace).Get(pvcObj.Name, metav1.GetOptions{})
+	gomega.Expect(err).To(
+		gomega.BeNil(),
+		"while retrieving pvc {%s} in namespace {%s}",
+		pvcName,
+		OpenEBSNamespace,
+	)
+}
+func createBlockPVC(pvcName string) {
+	var err error
 	volmode := corev1.PersistentVolumeBlock
 
 	ginkgo.By("building a pvc")
@@ -378,25 +408,6 @@ func createAndVerifyBlockPVC(expect_bound bool) {
 	gomega.Expect(err).To(
 		gomega.BeNil(),
 		"while creating pvc {%s} in namespace {%s}",
-		pvcName,
-		OpenEBSNamespace,
-	)
-
-	ginkgo.By("verifying pvc status as bound\n")
-
-	ok := false
-	if !expect_bound {
-		ok = IsPVCPendingConsistently(pvcName)
-	} else {
-		ok = IsPVCBoundEventually(pvcName)
-	}
-	gomega.Expect(ok).To(gomega.Equal(true),
-		"while checking the pvc status")
-
-	pvcObj, err = PVCClient.WithNamespace(OpenEBSNamespace).Get(pvcObj.Name, metav1.GetOptions{})
-	gomega.Expect(err).To(
-		gomega.BeNil(),
-		"while retrieving pvc {%s} in namespace {%s}",
 		pvcName,
 		OpenEBSNamespace,
 	)

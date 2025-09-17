@@ -28,6 +28,7 @@ var _ = Describe("[lvmpv] TEST VOLUME PROVISIONING", func() {
 		It("Running volume Creation Tests", volumeCreationTest)
 		It("Running scheduling Tests", schedulingTest)
 		It("Running volume/snapshot Capacity Tests", capacityTest)
+		It("Running volume Deletion Tests", volumeDeletionTest)
 	})
 })
 
@@ -342,6 +343,24 @@ func volumeCreationTest() {
 	By("###Running thin volume creation test###", thinVolCreationTest)
 	By("###Running leak protection test###", leakProtectionTest)
 	By("###Running shared volume for two app pods on same node test###", sharedVolumeTest)
+}
+
+func volumeDeletionTest() {
+	device := setupVg(40, "lvmvg")
+	defer cleanupVg(device, "lvmvg")
+	By("Creating thinProvision storage class", createThinStorageClass)
+	By("Creating and verifying a PVC bound status")
+	createAndVerifyBlockPVCId(true, "1")
+	By("Verifying LVMVolume object to be Ready")
+	VerifyLVMVolume(true, "")
+	By("Creating and verifying another PVC bound status")
+	createAndVerifyBlockPVCId(true, "2")
+	By("Verifying LVMVolume object to be Ready")
+	VerifyLVMVolume(true, "")
+	deleteAndVerifyPVC(pvcName + "-1")
+	VerifyThinPoolDeletion("lvmvg", "lvmvg_thinpool", false)
+	deleteAndVerifyPVC(pvcName + "-2")
+	VerifyThinPoolDeletion("lvmvg", "lvmvg_thinpool", true)
 }
 
 func schedulingTest() {

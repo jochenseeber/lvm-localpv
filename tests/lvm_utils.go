@@ -246,3 +246,24 @@ func VerifyThinpoolExtend() {
 		45*time.Second, 5*time.Second).
 		Should(gomega.BeTrue())
 }
+
+// Verify if thinpool is deleted or not as per input expectation.
+func VerifyThinPoolDeletion(vg string, thinpool string, expect_deleted bool) {
+	thinpool_lv := vg + "/" + thinpool
+
+	args := []string{
+		"lvs",
+		"--noheadings",
+		thinpool_lv,
+	}
+
+	stdout, _, err := execAtLocal("sudo", nil, args...)
+	fmt.Printf("VerifyThinPoolDeletion: expect_deleted: %v, err: %v, output: \n%s\n", expect_deleted, err, stdout)
+	// When expect_deleted is true it means we are expecting `lvs` command to list the thinpool, which
+	// means err will be nil. Otherwise, err is non-nil (error code 5) when thinpool is not found.
+	if expect_deleted {
+		gomega.Expect(err).Should(gomega.HaveOccurred(), "shouldn't find the thinpool")
+	} else {
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred(), "should've found the thinpool")
+	}
+}
