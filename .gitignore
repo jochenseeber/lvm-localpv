@@ -10,3 +10,7 @@ tags
 coverage.txt
 /tests/bdd_coverage.txt
 /nixos.qcow2
+/.vagrant
+*~
+/.tmp
+profile.out
