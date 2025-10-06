@@ -1,13 +1,12 @@
-# Vagrantfile to spin up a development VM using UTM
+# Vagrantfile to spin up a development VM
 # 
 # Prerequisites:
-# - Install UTM: https://mac.getutm.app/
 # - Install VirtualBox: https://www.virtualbox.org/
 # - Start VM: `vagrant up`
 # - Install VSCode Remote-SSH extension: https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh
 # - Print SSH config: `vagrant ssh-config`
 # - Manually add SSH config to your `~/.ssh/config` and change the name from `default` to `lvm-localpv`
-# - Open the project with: `code --folder-uri 'vscode-remote://ssh-remote+lvm-localpv/workspace'`
+# - Open the project remotely with: `code --folder-uri 'vscode-remote://ssh-remote+lvm-localpv/workspace'
 
 require "json"
 
@@ -79,6 +78,7 @@ Vagrant.configure("2") do |config|
     K9S_VERSION="0.50.13"
     KUBERNETES_VERSION="1.34.0"
     MINIKUBE_VERSION="1.37.0"
+    ACT_VERSION="0.2.82"
     KUBERNETES_MINOR_VERSION=$(echo "${KUBERNETES_VERSION}" | cut -d. -f1-2)
 
     # APT packages to install
@@ -205,6 +205,16 @@ Vagrant.configure("2") do |config|
     minikube config set driver none
     minikube config set kubernetes-version "${KUBERNETES_VERSION}"
     minikube start --download-only 
+
+    # Install act (Github local action runner)
+    ACT_ARCH=$(case "$ARCH" in
+      amd64) echo "x86_64" ;;
+      arm64) echo "arm64" ;;
+      *) echo "unsupported"; exit 1 ;;
+    esac)
+
+    download_file "https://github.com/nektos/act/releases/download/v${ACT_VERSION}/act_Linux_${ACT_ARCH}.tar.gz" "/var/cache/downloads/act-${ACT_VERSION}.tar.gz"
+    tar --extract --gzip --file /var/cache/downloads/act-${ACT_VERSION}.tar.gz --directory /usr/local/bin act --overwrite
 
     # Configure LVM2
     write_to_file "/etc/lvm/lvm.conf" '#{LVM_CONF}'

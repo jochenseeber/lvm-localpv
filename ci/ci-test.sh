@@ -337,7 +337,11 @@ while test $# -gt 0; do
       if [ -z "$1" ]; then
         needs_help "Missing argument for --datadir"
       fi
-      # Convert to absolute path if not already absolute
+
+      if [ ! -d "$1" ]; then
+        die "'$1' is not a directory"
+      fi
+
       DATA_DIR="$1"
       ;;
     -h | --help)

@@ -35,9 +35,9 @@ jobs:
           echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
 
       - name: Lint Check
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.56.2
+          version: v2.5.0
           args: -E dupl,revive,bodyclose,goconst,misspell --timeout 5m0s
 
       - name: Shellcheck

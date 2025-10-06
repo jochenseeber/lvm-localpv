@@ -37,9 +37,9 @@ pkgs.mkShell {
     
     # Temp directories should not be in project directory to avoid issues if it's mounted remotely
     export CGO_ENABLED=0
-    export GOCACHE="$HOME/nix/.go/.cache"
+    export GOCACHE="$HOME/.cache/openebs/lvm-localpv/go/cache"
     export GOENV=off
-    export GOMODCACHE="$HOME/nix/.go/.modcache"
+    export GOMODCACHE="$HOME/.cache/openebs/lvm-localpv/go/modcache"
     export GOPATH="$HOME/nix/.go"
     export GOPROXY=direct
     export GOTELEMETRY="off"
