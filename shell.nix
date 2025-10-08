@@ -36,7 +36,11 @@ pkgs.mkShell {
     unset GOROOT
     
     # Temp directories should not be in project directory to avoid issues if it's mounted remotely
-    OPENEBS_CACHE="$HOME/.cache/openebs/lvm-localpv"
+    if [[ -z "$HOME" ]]; then
+      export OPENEBS_CACHE="/tmp/.cache/openebs/lvm-localpv"
+    else
+      export OPENEBS_CACHE="$HOME/.cache/openebs/lvm-localpv"
+    fi
 
     export CGO_ENABLED=0
     export GOCACHE="$OPENEBS_CACHE/go/cache"
@@ -54,6 +58,8 @@ pkgs.mkShell {
     mkdir -p "$GOMODCACHE"
     mkdir -p "$GOTMPDIR"
     mkdir -p "$TMPDIR"
+
+    env
 
     if [ "$IN_NIX_SHELL" = "pure" ]; then
       # working sudo within a pure nix-shell
