@@ -36,7 +36,7 @@ pkgs.mkShell {
     unset GOROOT
     
     # Temp directories should not be in project directory to avoid issues if it's mounted remotely
-    OPENEBS_CACHE="$HOME/.cache/openebs/lvm-localpv"
+    export OPENEBS_CACHE="$HOME/.cache/openebs/lvm-localpv"
 
     export CGO_ENABLED=0
     export GOCACHE="$OPENEBS_CACHE/go/cache"
