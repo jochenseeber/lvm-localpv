@@ -13,6 +13,7 @@ on:
       - "design/**"
       - "LICENSE"
       - "MAINTAINERS"
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -33,6 +34,7 @@ jobs:
         run: |
           echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
           echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
+          env
 
       - name: Lint Check
         uses: golangci/golangci-lint-action@v8
