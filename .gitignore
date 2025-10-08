@@ -12,6 +12,6 @@ coverage.txt
 /nixos.qcow2
 /.vagrant
 *~
-/.tmp
 profile.out
-/.env.local
+/Vagrantfile
+/.claude
