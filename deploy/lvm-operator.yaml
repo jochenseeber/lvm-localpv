@@ -135,8 +135,6 @@ spec:
             required:
             - capacity
             - ownerNodeID
-            - shared
-            - thinProvision
             - vgPattern
             - volGroup
             type: object

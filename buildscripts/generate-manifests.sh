@@ -19,7 +19,7 @@ set -o nounset
 set -o pipefail
 
 ## find or download controller-gen
-CONTROLLER_GEN=$(which controller-gen)
+CONTROLLER_GEN=$(which controller-gen || true)
 
 if [ "$CONTROLLER_GEN" = "" ]
 then

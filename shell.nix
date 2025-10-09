@@ -59,8 +59,6 @@ pkgs.mkShell {
     mkdir -p "$GOTMPDIR"
     mkdir -p "$TMPDIR"
 
-    env
-
     if [ "$IN_NIX_SHELL" = "pure" ]; then
       # working sudo within a pure nix-shell
       for sudo in /run/wrappers/bin/sudo /usr/bin/sudo /usr/local/bin/sudo /sbin/sudo /bin/sudo; do
