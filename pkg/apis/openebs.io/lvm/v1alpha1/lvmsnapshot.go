@@ -46,7 +46,6 @@ type LVMSnapshotSpec struct {
 	VolGroup string `json:"volGroup"`
 
 	// SnapSize specifies the space reserved for the snapshot
-	// +kubebuilder:validation:Required
 	SnapSize string `json:"snapSize,omitempty"`
 }
 

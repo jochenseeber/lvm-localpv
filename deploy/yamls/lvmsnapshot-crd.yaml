@@ -66,7 +66,6 @@ spec:
                 type: string
             required:
             - ownerNodeID
-            - snapSize
             - volGroup
             type: object
           status:
